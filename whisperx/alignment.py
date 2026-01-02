@@ -418,8 +418,12 @@ def get_wildcard_emission(frame_emission, tokens, blank_id):
     """
     assert 0 <= blank_id < len(frame_emission)
 
-    # Convert tokens to a tensor if they are not already
-    tokens = torch.tensor(tokens) if not isinstance(tokens, torch.Tensor) else tokens
+    # Convert tokens to a tensor if they are not already; force integer dtype for indexing
+    tokens = torch.as_tensor(tokens, dtype=torch.long, device=frame_emission.device) if not isinstance(tokens, torch.Tensor) else tokens.to(dtype=torch.long, device=frame_emission.device)
+
+    # Nothing to index when no tokens remain (e.g., single-char segments)
+    if tokens.numel() == 0:
+        return torch.empty_like(tokens, dtype=frame_emission.dtype)
 
     # Create a mask to identify wildcard positions
     wildcard_mask = (tokens == -1)
