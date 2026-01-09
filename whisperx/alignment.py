@@ -72,6 +72,7 @@ DEFAULT_ALIGN_MODELS_HF = {
     "lv": "jimregan/wav2vec2-large-xlsr-latvian-cv",
     "tl": "Khalsuu/filipino-wav2vec2-l-xls-r-300m-official",
     "mr": "infinitejoy/wav2vec2-large-xls-r-300m-marathi-cv8",
+    "th": "airesearch/wav2vec2-large-xlsr-53-th",
 }
 
 
