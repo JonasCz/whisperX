@@ -21,17 +21,18 @@ from whisperx.vads.vad import Vad
 
 @contextlib.contextmanager
 def _torch_load_weights_only_false():
-    """pyannote's Model.from_pretrained() loads its checkpoint via torch.load()
-    without specifying weights_only. Since torch 2.6, torch.load() defaults to
-    weights_only=True, which refuses to unpickle the omegaconf.listconfig.ListConfig
+    """pyannote's Model.from_pretrained() loads its checkpoint via lightning_fabric's
+    pl_load(), which explicitly passes weights_only=True (lightning's own default,
+    following torch's). That refuses to unpickle the omegaconf.listconfig.ListConfig
     object embedded in the VAD checkpoint bundled with this package, breaking VAD
     loading entirely. That checkpoint ships with whisperx itself (not user-supplied),
-    so it's safe to load it fully unpickled -- temporarily patch torch.load to do so.
+    so it's safe to load it fully unpickled -- temporarily patch torch.load to force
+    weights_only=False, overriding whatever the caller passed.
     """
     original_load = torch.load
 
     def patched_load(*args, **kwargs):
-        kwargs.setdefault("weights_only", False)
+        kwargs["weights_only"] = False
         return original_load(*args, **kwargs)
 
     torch.load = patched_load
