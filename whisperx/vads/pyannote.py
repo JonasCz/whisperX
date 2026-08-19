@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 import os
 import urllib
@@ -16,6 +17,29 @@ from tqdm import tqdm
 
 from whisperx.diarize import Segment as SegmentX
 from whisperx.vads.vad import Vad
+
+
+@contextlib.contextmanager
+def _torch_load_weights_only_false():
+    """pyannote's Model.from_pretrained() loads its checkpoint via torch.load()
+    without specifying weights_only. Since torch 2.6, torch.load() defaults to
+    weights_only=True, which refuses to unpickle the omegaconf.listconfig.ListConfig
+    object embedded in the VAD checkpoint bundled with this package, breaking VAD
+    loading entirely. That checkpoint ships with whisperx itself (not user-supplied),
+    so it's safe to load it fully unpickled -- temporarily patch torch.load to do so.
+    """
+    original_load = torch.load
+
+    def patched_load(*args, **kwargs):
+        kwargs.setdefault("weights_only", False)
+        return original_load(*args, **kwargs)
+
+    torch.load = patched_load
+    try:
+        yield
+    finally:
+        torch.load = original_load
+
 
 def load_vad_model(device, vad_onset=0.500, vad_offset=0.363, use_auth_token=None, model_fp=None):
     model_dir = torch.hub._get_torch_home()
@@ -39,7 +63,8 @@ def load_vad_model(device, vad_onset=0.500, vad_offset=0.363, use_auth_token=Non
 
     model_bytes = open(model_fp, "rb").read()
 
-    vad_model = Model.from_pretrained(model_fp, use_auth_token=use_auth_token)
+    with _torch_load_weights_only_false():
+        vad_model = Model.from_pretrained(model_fp, use_auth_token=use_auth_token)
     hyperparameters = {"onset": vad_onset,
                     "offset": vad_offset,
                     "min_duration_on": 0.1,
